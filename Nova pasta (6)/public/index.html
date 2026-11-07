@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ToonStudio – Animações infantis com IA</title>
+<style>
+:root{--bg:#f6f4ff;--card:#fff;--tx:#241f3a;--mut:#6d6890;--pri:#6c4cf1;--ok:#1f9d63;--err:#d64545;--bd:#e2ddf7}
+@media (prefers-color-scheme:dark){:root{--bg:#16132a;--card:#211d3d;--tx:#f1eeff;--mut:#a9a3d1;--pri:#8f78ff;--bd:#352f5e}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{padding:14px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;max-width:1200px;margin:auto}
+h1{margin:0;font-size:1.35rem}h2{margin:0 0 8px;font-size:1.05rem}
+main{max-width:1200px;margin:auto;padding:0 24px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:18px;margin-bottom:16px}
+label{display:block;font-weight:600;margin:12px 0 6px;font-size:.88rem}
+textarea,select,input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+textarea{min-height:64px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+button{font:inherit;cursor:pointer}
+.btn{padding:10px 16px;border:0;border-radius:10px;background:var(--pri);color:#fff;font-weight:700}
+.btn.sec{background:none;border:1px solid var(--bd);color:var(--tx);font-weight:500}
+.btn:disabled{opacity:.5}.go{width:100%;padding:13px;margin-top:14px;font-size:1rem}
+.tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.scene{display:grid;grid-template-columns:28px 1fr auto;gap:8px;align-items:start;margin-bottom:8px}
+.scene b{padding-top:10px;color:var(--mut)}.scene div{display:flex;flex-direction:column;gap:4px}
+.mini{padding:4px 10px;border:1px solid var(--bd);border-radius:8px;background:none;color:var(--tx);font-size:.82rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.item{border:1px solid var(--bd);border-radius:12px;padding:8px}
+video{width:100%;border-radius:8px;background:#000}
+.badge{font-size:.72rem;padding:2px 8px;border-radius:10px;background:var(--bd)}
+.done{color:var(--ok)}.error{color:var(--err)}.mut{color:var(--mut);font-size:.82rem}
+.bar{height:6px;background:var(--bd);border-radius:4px;overflow:hidden;margin:8px 0}.bar i{display:block;height:100%;background:var(--pri);transition:width .6s}
+.hidden{display:none!important}
+.prev{width:90px;height:90px;object-fit:cover;border-radius:10px;border:1px solid var(--bd)}.prev.big{width:auto;max-width:100%;height:auto;max-height:260px;display:block;margin-top:8px}
+.ana{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;white-space:pre-wrap}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid var(--pri);padding:10px 16px;border-radius:12px;max-width:90%;z-index:9;font-size:.85rem}
+a{color:var(--pri)}
+</style>
+</head>
+<body>
+<div id="app">
+<header><h1>🎬 ToonStudio</h1>
+  <span id="health" class="badge">verificando...</span></header>
+<div id="warn" class="mut" style="max-width:1200px;margin:0 auto 10px;padding:0 24px"></div>
+<main>
+  <div class="tabs"><button class="btn" id="m2">🖼️ Imagem → vídeo</button><button class="btn sec" id="m1">📖 História em cenas</button><button class="btn sec" id="m3">📁 Meus projetos</button></div>
+
+  <!-- IMAGEM -> VIDEO -->
+  <div id="imgMode">
+    <div class="card">
+      <h2>🖼️ Criar vídeo a partir de uma imagem</h2>
+      <p class="mut">A IA analisa a imagem (personagens, cores, estilo, cenário, luz) e lê seu texto junto para planejar um vídeo coeso. Vídeos longos são criados em partes de 5s encadeadas.</p>
+      <label>Imagem inicial</label><input type="file" id="ifile" accept="image/*"><img id="iprev" class="prev big hidden">
+      <label>Descreva o vídeo <span class="mut" id="icount">0/8000</span></label>
+      <textarea id="iprompt" maxlength="8000" style="min-height:170px" placeholder="Conte tudo: o que acontece, em que ordem, emoções, câmera, clima, sons que sugerem movimento... Quanto mais detalhe, melhor o planejamento."></textarea>
+      <div class="row">
+        <div><label>Duração total</label><select id="idur"><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="20" selected>20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="60">1 min</option><option value="90">1 min 30</option><option value="120">2 min</option><option value="180">3 min</option></select></div>
+        <div><label>Qualidade</label><select id="iq"><option value="max">Máxima (modelos A14B quando disponíveis)</option><option value="std">Rápida (TI2V-5B, 720p)</option></select></div>
+        <div><label>Formato</label><select id="isize"><option value="auto">Automático (pela imagem)</option><option value="h">Horizontal 16:9</option><option value="vertical">Vertical</option></select></div>
+      </div>
+      <button class="btn go" id="iplan">🔍 Analisar imagem e planejar</button>
+      <button class="btn sec go" id="igo2" style="margin-top:8px">⚡ Gerar direto (sem etapa de análise)</button>
+      <div id="ibox" class="hidden">
+        <label>O que a IA viu e como vai usar seu texto</label><div class="ana" id="iana"></div>
+        <label>Personagens/elementos fixos (inglês – editável)</label><textarea id="ichar"></textarea>
+        <label>Estilo visual (inglês – editável)</label><input id="istyle">
+        <label>Partes de 5 segundos (editáveis)</label><div id="ilist"></div>
+        <button class="btn go" id="igo">✨ Gerar vídeo</button><p class="mut" id="icost" style="text-align:center"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIA -->
+  <div id="storyMode" class="hidden">
+    <div class="card">
+      <h2>1. Roteiro</h2>
+      <label>Ideia da história <span class="mut" id="scount">0/8000</span></label>
+      <textarea id="idea" maxlength="8000" style="min-height:120px" placeholder="Conte a história com o máximo de detalhes que quiser."></textarea>
+      <div class="row" style="align-items:end"><div><label>Nº de cenas</label><select id="n"><option>3</option><option selected>5</option><option>8</option><option>12</option><option>20</option><option>30</option><option>40</option></select></div>
+      <button class="btn" id="mk">🤖 Gerar roteiro com IA</button></div>
+      <p class="mut">Se você anexar a imagem de referência abaixo, a IA também a analisa para escrever o roteiro.</p>
+      <label>Título</label><input id="title">
+      <label>Personagem fixo (mesma descrição em todas as cenas)</label><textarea id="char" style="min-height:48px"></textarea>
+      <label>Cenas</label><div id="scenes"></div>
+      <button class="btn sec" id="add">+ Adicionar cena</button>
+    </div>
+    <div class="card">
+      <h2>2. Visual e geração</h2>
+      <div class="row">
+        <div><label>Estilo</label><select id="style"><option value="3d">3D colorido</option><option value="2d">2D desenhado</option><option value="massinha">Massinha</option><option value="aquarela">Aquarela</option><option value="">Nenhum (só o roteiro)</option></select></div>
+        <div><label>Duração por cena</label><select id="sec"><option>5</option><option>10</option><option>15</option><option>20</option><option>30</option><option>45</option><option>60</option></select></div>
+        <div><label>Formato</label><select id="size"><option value="h">Horizontal 16:9</option><option value="vertical">Vertical (Shorts)</option></select></div>
+        <div><label>Qualidade</label><select id="q"><option value="max">Máxima (A14B quando disponível)</option><option value="std">Rápida (TI2V-5B)</option></select></div>
+      </div>
+      <label>Estilo personalizado (opcional – substitui o estilo acima)</label><input id="cstyle" placeholder="Ex: Pixar-like soft 3D, glossy toys, pastel palette">
+      <label>Imagem de referência (opcional – ponto de partida de cada cena)</label>
+      <div style="display:flex;gap:10px;align-items:center"><input type="file" id="file" accept="image/*"><img id="prev" class="prev hidden"><button class="mini hidden" id="rm">remover</button></div>
+      <button class="btn go" id="go">✨ Gerar</button><p class="mut" id="cost" style="text-align:center"></p>
+    </div>
+  </div>
+
+  <div id="projects" class="hidden"></div>
+</main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let ref=null,iimg=null,iasp="h";
+const L={s:["",""],i:[]},LC={s:"scenes",i:"ilist"};
+let projects=[];
+try{projects=JSON.parse(localStorage.getItem("toon_v4")||"[]")}catch(e){}
+const save=()=>{try{localStorage.setItem("toon_v4",JSON.stringify(projects.slice(0,60)))}catch(e){}};
+
+async function api(p,body){
+  const r=await fetch("/api/"+p,{method:body?"POST":"GET",headers:{"Content-Type":"application/json"},body:body?JSON.stringify(body):undefined});
+  const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||"Erro");return d;
+}
+async function refresh(){
+  const act=projects.flatMap(p=>p.jobs).filter(j=>j.wid&&(j.status==="queued"||j.status==="running"));
+  if(!act.length)return;
+  try{const d=await api("status?ids="+act.map(j=>j.wid).join(","));
+    act.forEach(j=>{const r=d[j.wid];if(r)Object.assign(j,{status:r.status,progress:r.progress??j.progress,url:r.url||null,error:r.error||null})});
+    save();renderProjects();}catch(e){}
+}
+
+/* ---------- listas de cenas/partes ---------- */
+function rl(k){$(LC[k]).innerHTML=L[k].map((s,i)=>`<div class="scene"><b>${i+1}</b><textarea data-k="${k}" data-i="${i}" maxlength="8000">${esc(s)}</textarea>
+ <div><button class="mini" data-k="${k}" data-up="${i}">↑</button><button class="mini" data-k="${k}" data-dn="${i}">↓</button><button class="mini" data-k="${k}" data-rm="${i}">✕</button></div></div>`).join("");cost()}
+function listEv(e){const d=e.target.dataset,k=d.k;if(!k)return;const a=L[k];
+  if(e.type==="input"){if(d.i!==undefined){a[d.i]=e.target.value;cost()}return}
+  if(d.up!==undefined&&+d.up>0)[a[d.up-1],a[d.up]]=[a[d.up],a[d.up-1]];
+  else if(d.dn!==undefined&&+d.dn<a.length-1)[a[+d.dn+1],a[d.dn]]=[a[d.dn],a[+d.dn+1]];
+  else if(d.rm!==undefined)a.splice(d.rm,1);else return;rl(k)}
+["scenes","ilist"].forEach(id=>{$(id).addEventListener("input",listEv);$(id).addEventListener("click",listEv)});
+$("add").onclick=()=>{if(L.s.length<40){L.s.push("");rl("s")}};
+function cost(){
+  const a=L.s.filter(t=>t.trim()).length*Math.ceil($("sec").value/5)*5;
+  $("cost").textContent=a?`${a}s de vídeo no total`:"";
+  $("icost").textContent=L.i.length?`${L.i.length*5}s de vídeo`:"";
+}
+$("sec").onchange=cost;
+$("iprompt").oninput=()=>$("icount").textContent=$("iprompt").value.length+"/8000";
+$("idea").oninput=()=>$("scount").textContent=$("idea").value.length+"/8000";
+
+/* ---------- imagens ---------- */
+function loadImg(file,cb){const im=new Image();im.onload=()=>{const k=Math.min(1,1280/Math.max(im.width,im.height)),c=document.createElement("canvas");
+  c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext("2d").drawImage(im,0,0,c.width,c.height);cb(c.toDataURL("image/jpeg",.88),im.width>=im.height?"h":"vertical")};im.src=URL.createObjectURL(file)}
+$("file").onchange=e=>{const f=e.target.files[0];if(f)loadImg(f,d=>{ref=d;$("prev").src=d;$("prev").classList.remove("hidden");$("rm").classList.remove("hidden")})};
+$("rm").onclick=()=>{ref=null;$("file").value="";$("prev").classList.add("hidden");$("rm").classList.add("hidden")};
+$("ifile").onchange=e=>{const f=e.target.files[0];if(f)loadImg(f,(d,a)=>{iimg=d;iasp=a;$("iprev").src=d;$("iprev").classList.remove("hidden")})};
+
+/* ---------- planejamento por IA (em lotes) ---------- */
+const retry=async f=>{try{return await f()}catch(e){if(/ANTHROPIC|inválida|ausente/.test(e.message))throw e;return await f()}};
+function toast(m){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),10000)}
+function localPlan(idea,total){
+  const sent=idea.split(/(?<=[.!?…])\s+|\n+/).map(x=>x.trim()).filter(Boolean),base="smooth natural motion, consistent characters and art style, cinematic camera",scenes=[];
+  for(let i=0;i<total;i++){let t;
+    if(!sent.length)t="Bring the image to life with gentle, natural motion of the characters and the background";
+    else{const a=Math.floor(i*sent.length/total),b=Math.max(a+1,Math.floor((i+1)*sent.length/total));t=sent.slice(a,b).join(" ")}
+    scenes.push(t+", "+base+(i?", continuing seamlessly from the previous moment":""))}
+  return {title:idea.slice(0,40)||"Meu vídeo",analysis:"Planejamento básico (sem IA): seu texto foi dividido em partes; a imagem é o primeiro quadro.",character:"",style:"",scenes};
+}
+async function planAll(idea,total,continuous,image,setBusy){
+  try{return await planAI(idea,total,continuous,image,setBusy)}
+  catch(e){toast("IA de planejamento indisponível ("+e.message+"). Usei o planejamento básico: a geração do vídeo continua normal.");return localPlan(idea,total)}
+}
+async function planAI(idea,total,continuous,image,setBusy){
+  let ctx=null,out=[],meta={};
+  for(let from=0;from<total;from+=4){
+    setBusy(`Planejando ${Math.min(from+4,total)}/${total}...`);
+    const d=await retry(()=>api("script",{idea,total,from,count:Math.min(4,total-from),continuous,image:from?null:image,ctx:from?{...ctx,prev:out[out.length-1]}:null}));
+    if(!from){meta=d;ctx={title:d.title,analysis:d.analysis,character:d.character,style:d.style}}
+    out.push(...(d.scenes||[]));
+  }
+  return {...meta,scenes:out};
+}
+$("mk").onclick=async()=>{
+  if(!$("idea").value.trim()&&!ref)return alert("Escreva a ideia ou anexe uma imagem de referência.");
+  const b=$("mk"),t=b.textContent;b.disabled=true;
+  try{const d=await planAll($("idea").value,+$("n").value,false,ref,m=>b.textContent=m);
+    $("title").value=d.title||"";$("char").value=d.character||"";if(d.style&&!$("cstyle").value)$("cstyle").value=d.style;L.s=d.scenes.length?d.scenes:[""];rl("s");
+  }catch(e){alert(e.message)}
+  b.disabled=false;b.textContent=t;
+};
+$("iplan").onclick=async()=>{
+  if(!iimg)return alert("Escolha a imagem inicial.");
+  const b=$("iplan"),t=b.textContent;b.disabled=true;
+  try{const d=await planAll($("iprompt").value,$("idur").value/5,true,iimg,m=>b.textContent=m);
+    $("iana").textContent=d.analysis||"";$("ichar").value=d.character||"";$("istyle").value=d.style||"";L.i=d.scenes;rl("i");$("ibox").classList.remove("hidden");
+  }catch(e){alert(e.message)}
+  b.disabled=false;b.textContent=t;
+};
+
+/* ---------- gerar ---------- */
+async function send(btn,title,payload){
+  btn.disabled=true;
+  try{const d=await api("generate",payload);
+    const id=Date.now().toString(36);
+    projects.unshift({id,title:title||"Sem título",ts:Date.now(),merged_url:null,
+      jobs:d.jobs.map((j,i)=>({wid:j.wid,idx:i,prompt:j.prompt,seconds:j.seconds,total:j.total,progress:0,status:j.wid?"queued":"error",error:j.error||null,url:null}))});
+    save();renderProjects();mode(3);
+  }catch(e){alert(e.message)}
+  btn.disabled=false;
+}
+$("go").onclick=()=>{
+  let items=L.s.filter(t=>t.trim()).map(t=>({prompt:t,seconds:+$("sec").value}));
+  if(!items.length&&$("idea").value.trim())items=[{prompt:$("idea").value.trim(),seconds:+$("sec").value}];
+  send($("go"),$("title").value,{character:$("char").value,style:$("cstyle").value.trim()||$("style").value,quality:$("q").value,size:$("size").value,image:ref,items});
+};
+$("igo2").onclick=()=>{
+  if(!iimg)return alert("Escolha a imagem inicial.");
+  const d=localPlan($("iprompt").value,$("idur").value/5);
+  send($("igo2"),"Imagem → vídeo",{character:"",style:"",quality:$("iq").value,size:$("isize").value==="auto"?iasp:$("isize").value,image:iimg,items:[{segments:d.scenes}]});
+};
+$("igo").onclick=()=>{
+  const sz=$("isize").value==="auto"?iasp:$("isize").value;
+  send($("igo"),"Imagem → vídeo",{character:$("ichar").value,style:$("istyle").value,quality:$("iq").value,size:sz,image:iimg,items:[{segments:L.i}]});
+};
+
+/* ---------- projetos + download ---------- */
+const ST={queued:"Na fila",running:"Renderizando",done:"Pronto",error:"Erro"};
+const dlBtn=(u,n)=>`<button class="mini" data-dl="${esc(u)}" data-name="${esc(n)}">⬇ Baixar MP4</button>`;
+function renderProjects(){
+  $("projects").innerHTML=projects.length?projects.map(p=>{
+    const js=p.jobs,all=js.length&&js.every(j=>j.status==="done");
+    return `<div class="card"><h2>${esc(p.title)} <span class="mut">· ${js.length} ${js.length>1?"vídeos":"vídeo"}</span> <button class="mini" data-del="${p.id}" style="float:right">🗑 Remover</button></h2>
+    <div class="grid">${js.map(j=>{const pc=Math.round(100*(j.progress||0)/(j.total||1));return `<div class="item">
+      ${j.status==="done"?`<video controls preload="metadata" src="${esc(j.url)}"></video>`:j.status==="error"?`<div class="error mut">${esc(j.error||"Erro na geração")}</div>`:`<div class="bar"><i style="width:${Math.max(pc,6)}%"></i></div>`}
+      <div style="margin:6px 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="badge ${j.status}">${ST[j.status]}${j.status==="running"&&j.total>1?` ${j.progress}/${j.total}`:""}</span><span class="mut">${j.seconds}s</span>${j.status==="done"?dlBtn(j.url,`${p.title}-${j.idx+1}`):""}</div>
+      <div class="mut">${j.idx+1}. ${esc(j.prompt.slice(0,90))}</div></div>`}).join("")}</div>
+    ${p.merged_url?`<h2 style="margin-top:14px">🎞️ Vídeo final</h2><video controls src="${esc(p.merged_url)}" style="max-width:640px"></video><p>${dlBtn(p.merged_url,p.title+"-completo")}</p>`
+      :all&&js.length>1?`<button class="btn" data-merge="${p.id}" style="margin-top:12px">🎞️ Juntar tudo em um vídeo</button>`:""}</div>`}).join(""):`<p class="mut">Nenhum projeto ainda. Os vídeos ficam salvos neste navegador.</p>`;
+}
+$("projects").onclick=async e=>{
+  const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.del){if(confirm("Remover este projeto da lista?")){projects=projects.filter(p=>p.id!==b.dataset.del);save();renderProjects()}return}
+  if(b.dataset.merge){const p=projects.find(x=>x.id===b.dataset.merge);b.disabled=true;b.textContent="Juntando...";
+    try{p.merged_url=(await api("merge",{ids:p.jobs.map(j=>j.wid)})).url;save();renderProjects()}catch(err){alert(err.message);b.disabled=false;b.textContent="🎞️ Juntar tudo em um vídeo"}return}
+  if(b.dataset.dl){const t=b.textContent;b.textContent="Baixando...";b.disabled=true;
+    try{const r=await fetch(b.dataset.dl);if(!r.ok)throw 0;const u=URL.createObjectURL(await r.blob());
+      const a=document.createElement("a");a.href=u;a.download=(b.dataset.name||"video").replace(/[^\w\-À-ú ]+/g,"_")+".mp4";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000)}
+    catch{window.open(b.dataset.dl,"_blank")}
+    b.textContent=t;b.disabled=false}
+};
+
+function mode(n){
+  const map={2:"imgMode",1:"storyMode",3:"projects"};["imgMode","storyMode","projects"].forEach(id=>$(id).classList.toggle("hidden",id!==map[n]));
+  ["m1","m2","m3"].forEach((id,i)=>$(id).className="btn"+(i+1===n?"":" sec"))}
+["m1","m2","m3"].forEach((id,i)=>$(id).onclick=()=>mode(i+1));
+async function health(){try{const d=await api("health");$("health").textContent=(d.gpu?"🟢 GPU online":"🔴 GPU offline")+" · "+(d.ai?"🟢 IA":"🟡 IA básica");$("warn").textContent=d.msgs.length?"⚠ "+d.msgs.join(" "):""}catch{$("health").textContent="🔴 sem conexão"}}
+health();setInterval(health,60000);
+rl("s");renderProjects();refresh();setInterval(refresh,8000);
+</script>
+</body>
+</html>
